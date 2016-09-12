@@ -1,0 +1,69 @@
+4/27-30の間毎分1回動かす
+/etc/crontab
+*/1 *  27-30  4  * root /home/sasaki/scripts/mondorescue_kill_capa.sh
+
+
+#!/bin/sh
+
+CAPABASE=95
+
+BACKUPCAL=`df -h | grep ^/backup$ | wc -l`
+
+if [ $BACKUPCAL = 1 ]; then
+ CAPA=`df -h | grep ^/backup$ | awk '{print $5}' | sed "s/\%$//g"`
+ 
+ if [ "${CAPA}" != "" ] ; then
+  if [ $CAPA -ge $CAPABASE ]; then
+    echo "CAPA="$CAPA" mondoresucue kill simasu"
+#mondoarchive no kadou kakuninn
+    MONDOCAL=`ps -ef | grep [m]ondoarchive | grep backup | wc -l`
+     if [ "${MONDOCAL}" != "" ] ; then
+     if [ $MONDOCAL -ge 1 ]; then
+      echo "MONDOCAL="$MONDOCAL" mondo ugoitemasu"
+#mondarchive no process kill
+      MONDOPID=`ps -ef | grep [m]ondoarchive | grep backup | awk '{print $2}'`
+      kill -9 $MONDOPID  
+      echo "/backupのディスク使用率が "$CAPA"%となり"$CAPABASE"%を超えた為、mondoarchiveプロセス(PID:"$MONDOPID")をKILLしました。" > /home/sasaki/scripts/mailbody.txt
+      echo `hostname`"のイメージ取得を停止させました。" >> /home/sasaki/scripts/mailbody.txt
+      /home/sasaki/scripts/perl_mail2.pl
+     else
+:
+     fi
+     else
+:
+     fi
+  else
+:
+  fi
+ else
+:
+ fi
+else
+
+ CAPA=`df -h | grep /$ | awk '{print $5}' | sed "s/\%$//g"`
+ if [ "${CAPA}" != "" ] ; then
+   if [ $CAPA -ge $CAPABASE ]; then
+    echo "CAPA="$CAPA" mondoresucue kill simasu"
+#mondoarchive no kadou kakuninn
+    MONDOCAL=`ps -ef | grep [m]ondoarchive | grep backup | wc -l`
+
+     if [ $MONDOCAL -ge 1 ]; then
+      echo "MONDOCAL="$MONDOCAL" mondo ugoitemasu"
+#mondarchive no process kill
+      MONDOPID=`ps -ef | grep [m]ondoarchive | grep backup | awk '{print $2}'`
+      kill -9 $MONDOPID  
+      echo "/のディスク使用率が "$CAPA"%となり"$CAPABASE"%を超えた為、mondoarchiveプロセス(PID:"$MONDOPID")をKILLしました。" > /home/sasaki/scripts/mailbody.txt
+      echo `hostname`"のイメージ取得を停止させました。" >> /home/sasaki/scripts/mailbody.txt
+      /home/sasaki/scripts/perl_mail2.pl
+     else
+:
+     fi
+   else
+:
+   fi
+ else
+:
+ fi
+fi
+
+

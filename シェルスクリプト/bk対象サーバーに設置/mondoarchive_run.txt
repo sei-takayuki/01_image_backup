@@ -1,0 +1,36 @@
+#!/bin/sh
+
+rm -f /backup/mondorescue-*.iso
+
+date +%s > /home/sasaki/scripts/backupstart.txt
+
+mondoarchive -O -i -L -N -d /backup -E "/backup /media /mnt /home/sasaki/temp_files /home/postgres/back" -l GRUB -f /dev/vda -s 640m
+
+COMPLETIONCAL=`grep completion /var/log/mondoarchive.log | wc -l`
+
+md5sum /backup/mondorescue-*.iso >/home/sasaki/scripts/md5sum_value.txt
+cat /home/sasaki/scripts/md5sum_value.txt | LC_ALL=C sort -k 2 | sed 's/\/.*\///g' >/home/sasaki/scripts/md5sum_value_sort.txt
+
+START_TIME=`cat /home/sasaki/scripts/backupstart.txt`
+END_TIME=`date +%s` 
+
+SS=`expr ${END_TIME} - ${START_TIME}`
+SSMIN=`expr ${SS} / 60`
+
+if [ $COMPLETIONCAL -ge 1 ]; then
+  echo `hostname`"のイメージ取得は正常終了しました。" > /home/sasaki/scripts/mailbody_run.txt
+  echo "" >> /home/sasaki/scripts/mailbody_run.txt
+  echo "処理時間は "${SSMIN}"分でした。">> /home/sasaki/scripts/mailbody_run.txt
+  echo "ISO枚数MAXは50枚までです。注意して下さい。">> /home/sasaki/scripts/mailbody_run.txt
+  echo "イメージファイルリスト：ISO枚数 "`ls -la1 /backup | grep mondorescue | wc -l`"枚" >> /home/sasaki/scripts/mailbody_run.txt
+  ls -la /backup | grep mondorescue >> /home/sasaki/scripts/mailbody_run.txt
+  date +%y%m%d > /home/sasaki/scripts/backupfinish.txt
+  ls -la1 /backup | grep mondorescue | wc -l >  /home/sasaki/scripts/calISO.txt
+else
+  echo `hostname`"のイメージ取得は異常終了しました。" > /home/sasaki/scripts/mailbody_run.txt
+  echo "" >> /home/sasaki/scripts/mailbody_run.txt
+  echo "ISO枚数MAXは50枚までです。注意して下さい。">> /home/sasaki/scripts/mailbody_run.txt
+  echo "イメージファイルリスト：ISO枚数 "`ls -la1 /backup | grep mondorescue | wc -l`"枚" >> /home/sasaki/scripts/mailbody_run.txt
+  ls -la /backup | grep mondorescue >> /home/sasaki/scripts/mailbody_run.txt
+fi
+/home/sasaki/scripts/perl_mail_run.pl

@@ -1,0 +1,42 @@
+4/27-30の間毎分1回動かす
+/etc/crontab
+*/1 *  27-30  4  * root /home/sasaki/scripts/mondorescue_kill_time.sh
+
+
+#!/bin/sh
+
+#syorijikan no kijyun 9000sec(150min)
+BASETIME=9000
+
+START_TIME=`cat /home/sasaki/scripts/backupstart.txt`
+END_TIME=`date +%s` 
+
+SS=`expr ${END_TIME} - ${START_TIME}`
+
+
+#syorijikann ga 150min(9000sec)yori ookikereba kill
+
+if [ $SS -ge $BASETIME ]; then
+ echo "SS="$SS" mondoresucue kill simasu"
+#mondoarchive no kadou kakuninn
+ MONDOCAL=`ps -ef | grep [m]ondoarchive | grep backup | wc -l`
+
+ if [ $MONDOCAL -ge 1 ]; then
+  echo "MONDOCAL="$MONDOCAL" mondo ugoitemasu"
+#mondarchive no process kill
+  MONDOPID=`ps -ef | grep [m]ondoarchive | grep backup | awk '{print $2}'`
+  kill -9 $MONDOPID  
+  echo "処理時間: "$SS"secが"$BASETIME"secを超えた為、mondoarchiveプロセス(PID:"$MONDOPID")をKILLしました。" > /home/sasaki/scripts/mailbody.txt
+  echo `hostname`"のイメージ取得を停止させました。" >> /home/sasaki/scripts/mailbody.txt
+  /home/sasaki/scripts/perl_mail2.pl
+
+ else
+  echo "MONDOCAL="$MONDOCAL" mondo ugoitemasen"
+
+fi 
+  
+
+else
+ echo "SS="$SS" nanimosimasenn"
+
+fi

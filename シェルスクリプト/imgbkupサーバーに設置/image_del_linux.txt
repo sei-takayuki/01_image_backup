@@ -1,0 +1,50 @@
+#!/bin/sh
+
+#日付ディレクトリの一覧表を作成
+find /backup/linux_backup -type d | grep "/[0-9]\{6\}$" | sort > /home/sasaki/scripts/dir_all_before.txt
+
+rm /home/sasaki/scripts/dir_success.txt
+rm /home/sasaki/scripts/dir_failure.txt
+
+#for ループで dir_all_before.txtを読みこませる
+
+for BK_DIR_PATH in `cat /home/sasaki/scripts/dir_all_before.txt`
+do
+
+#イメージ転送成功DIRと失敗DIRを振り分ける
+if [ -f $BK_DIR_PATH/result.txt ]; then
+RESULT=`cat $BK_DIR_PATH/result.txt`
+ if [ $RESULT = "success" ]; then
+ echo $BK_DIR_PATH >> /home/sasaki/scripts/dir_success.txt
+ else
+ echo $BK_DIR_PATH >> /home/sasaki/scripts/dir_failure.txt
+ fi
+else
+echo $BK_DIR_PATH >> /home/sasaki/scripts/dir_failure.txt
+fi
+done
+
+#イメージ転送失敗DIRを削除する
+
+for DEL_DIR_PATH in `cat /home/sasaki/scripts/dir_failure.txt | sort | uniq | sed '/^$/d'`
+do
+rm -fr $DEL_DIR_PATH
+done
+
+#5ヶ月前のディレクトリを削除
+find /backup/linux_backup -mtime +150 -type d | grep "/[0-9]\{6\}$" | sort > /home/sasaki/scripts/del_dir.txt
+
+for DEL_DIR_PATH2 in `cat /home/sasaki/scripts/del_dir.txt | sort | uniq | sed '/^$/d'`
+do
+rm -fr $DEL_DIR_PATH2
+done
+
+#結果をメール送信
+echo `hostname`"の不要イメージファイルを削除しました。" > /home/sasaki/scripts/mailbody_del.txt
+echo "" >> /home/sasaki/scripts/mailbody_del.txt
+echo "下記イメージ取得失敗ディレクトリを削除しました。" >> /home/sasaki/scripts/mailbody_del.txt
+cat /home/sasaki/scripts/dir_failure.txt >> /home/sasaki/scripts/mailbody_del.txt
+echo "" >> /home/sasaki/scripts/mailbody_del.txt
+echo "下記150日以前に取得されたイメージ格納ディレクトリを削除しました。" >> /home/sasaki/scripts/mailbody_del.txt
+cat /home/sasaki/scripts/del_dir.txt >> /home/sasaki/scripts/mailbody_del.txt
+/home/sasaki/scripts/perl_mail_del.pl

@@ -1,0 +1,81 @@
+#!/bin/sh
+
+GETSV_IP="192.168.50.238"
+GETSV_NAME="centos59-db05"
+DATE2=`date +%y%m%d`
+FTPFT_LOG="/backup/linux_backup/$GETSV_NAME/$DATE2/mondorescue_ftp.log"
+BKSV="img-bksvr4"
+
+
+cd /backup/linux_backup/$GETSV_NAME
+mkdir $DATE2
+cd $DATE2
+
+
+ftp -i -v -n $GETSV_IP << END 
+user sasaki password
+cd scripts
+ascii
+passive
+get backupfinish.txt
+get calISO.txt
+get md5sum_value_sort.txt
+quit
+END
+
+
+DATE1=`cat /backup/linux_backup/$GETSV_NAME/$DATE2/backupfinish.txt`
+
+if [ "${DATE1}" = "${DATE2}" ]; then
+
+cd /backup/linux_backup/$GETSV_NAME/$DATE2
+
+echo `date` "START: FTP GET LogFile. " > $FTPFT_LOG
+
+ftp -i -v -n $GETSV_IP << END >> $FTPFT_LOG
+user backup password
+bin
+passive
+mget mondorescue-*.iso
+quit
+END
+
+echo `date` "END: FTP GET LogFile. " >> $FTPFT_LOG
+
+
+md5sum /backup/linux_backup/$GETSV_NAME/$DATE2/mondorescue-*.iso | LC_ALL=C sort -k 2 | sed 's/\/.*\///g' >/backup/linux_backup/$GETSV_NAME/$DATE2/md5sum_value_sort_r.txt
+
+diff /backup/linux_backup/$GETSV_NAME/$DATE2/md5sum_value_sort.txt /backup/linux_backup/$GETSV_NAME/$DATE2/md5sum_value_sort_r.txt >/backup/linux_backup/$GETSV_NAME/$DATE2/ftp_diff.txt
+
+FTP_DIFF=`cat /backup/linux_backup/$GETSV_NAME/$DATE2/ftp_diff.txt`
+
+FILECAL_REMOTE=`cat /backup/linux_backup/$GETSV_NAME/$DATE2/calISO.txt`
+FILECAL_BKSV=`cat $FTPFT_LOG | grep "Transfer complete" | wc -l`
+
+ if [ -z "$FTP_DIFF" ]; then
+  echo "success" > /backup/linux_backup/$GETSV_NAME/$DATE2/result.txt
+
+  echo "$GETSV_NAME の"$BKSV"へのイメージFTP転送は正常終了しました。" > /home/sasaki/scripts/mailbody_ftp.txt
+  echo "" >> /home/sasaki/scripts/mailbody_ftp.txt
+  echo "$GETSV_NAME 上のイメージファイル数： "$FILECAL_REMOTE"枚" >> /home/sasaki/scripts/mailbody_ftp.txt
+  echo "$BKSV 上のイメージファイル数： "$FILECAL_BKSV"枚" >> /home/sasaki/scripts/mailbody_ftp.txt
+  echo "転送元イメージのチェックサム値と転送先イメージのチェックサム値が一致しました。">> /home/sasaki/scripts/mailbody_ftp.txt
+  /home/sasaki/scripts/perl_mail_ftp_centos59-db05.pl
+ 
+  else
+  echo "failure" > /backup/linux_backup/$GETSV_NAME/$DATE2/result.txt
+
+  echo "$GETSV_NAME の"$BKSV"へのイメージFTP転送は異常終了しました。" > /home/sasaki/scripts/mailbody_ftp.txt
+  echo "" >> /home/sasaki/scripts/mailbody_ftp.txt
+  echo "$GETSV_NAME 上のイメージファイル数： "$FILECAL_REMOTE"枚" >> /home/sasaki/scripts/mailbody_ftp.txt
+  echo "$BKSV 上のイメージファイル数： "$FILECAL_BKSV"枚" >> /home/sasaki/scripts/mailbody_ftp.txt
+  echo "転送元イメージのチェックサム値と転送先イメージのチェックサム値が一致しませんでした。">> /home/sasaki/scripts/mailbody_ftp.txt
+  echo "" >> /home/sasaki/scripts/mailbody_ftp.txt
+  echo "$FTP_DIFF" >> /home/sasaki/scripts/mailbody_ftp.txt
+  /home/sasaki/scripts/perl_mail_ftp_centos59-db05.pl
+fi
+else
+
+echo "nanimo shimasen"
+
+fi

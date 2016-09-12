@@ -1,0 +1,85 @@
+#!/usr/bin/perl
+
+####################################
+#mail smtp ver.
+####################################
+
+use Socket;
+
+$EOL = "\015\012";
+
+$smtpht = "smtpsvr.hogehoge.ne.jp";
+$to = 'sys_mainte@hogehoge.co.jp';
+$cc = 'hogehoge_hoshu@hogehoge.ne.jp';
+$fr = 'sys_mainte@hogehoge.co.jp';
+$hostname = `hostname -f`;
+chomp($hostname);
+$subject = 'ImageBackup Delete Result: '.$hostname;
+
+open(IN,"/home/sasaki/scripts/mailbody_del.txt");
+@contents = <IN>;
+close(IN);
+
+$sock_addr = 'S n a4 x8';
+
+$iaddr = inet_aton($smtpht);
+$a = inet_ntoa($iaddr);
+print "iaddr=";
+print $a;
+print "\n";
+
+$port = getservbyname('smtp','tcp');
+
+$sock_addr = pack_sockaddr_in($port,$iaddr);
+
+socket(SOCKET,PF_INET,SOCK_STREAM, 0) || die;
+connect(SOCKET,$sock_addr) || die;
+select(SOCKET); $|=1; select(STDOUT);
+
+$buftmp = <SOCKET>;
+print $buftmp;
+
+$cmd = "helo smtpsvr.hogehoge.ne.jp";
+print SOCKET $cmd . $EOL;
+$buftmp = <SOCKET>;
+print $buftmp;
+
+$cmd = "Mail From:<sys_mainte\@hogehoge.co.jp>";
+print SOCKET $cmd . $EOL;
+$buftmp = <SOCKET>;
+print $buftmp;
+
+$cmd = "Rcpt To:<sys_mainte\@hogehoge.co.jp>";
+print SOCKET $cmd . $EOL;
+$buftmp = <SOCKET>;
+print $buftmp;
+
+$cmd = "Rcpt To:<hogehoge_hoshu\@hogehoge.ne.jp>";
+print SOCKET $cmd . $EOL;
+$buftmp = <SOCKET>;
+print $buftmp;
+
+$cmd = "DATA";
+print SOCKET $cmd . $EOL;
+$buftmp = <SOCKET>;
+print $buftmp;
+
+$message = <<END_OF_MESSAGE;
+To: $to
+From: $fr
+CC: $cc
+Subject: $subject
+Content-Type: text/plain; charset="UTF-8"
+
+@contents
+END_OF_MESSAGE
+
+$cmd = $message . $EOL . "." . $EOL;
+print SOCKET $cmd;
+$buftmp = <SOCKET>;
+print $buftmp;
+
+$cmd = "quit";
+print SOCKET $cmd . $EOL;
+$buftmp = <SOCKET>;
+print $buftmp;

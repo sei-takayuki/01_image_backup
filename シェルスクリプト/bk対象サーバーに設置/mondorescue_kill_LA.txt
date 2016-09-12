@@ -1,0 +1,36 @@
+4/27-30の間毎分1回動かす
+/etc/crontab
+*/1 *  27-30  4  * root /home/sasaki/scripts/mondorescue_kill_LA.sh
+
+
+#!/bin/sh
+
+LABASE=10
+LA=`uptime | grep "load average" | awk '{print $(NF - 2)}' | sed "s/\...,$//g"`
+
+#LABASE yori LA ga ookikereba kill
+
+if [ $LA -ge $LABASE ]; then
+ echo "LA="$LA" mondoresucue kill simasu"
+#mondoarchive no kadou kakuninn
+ MONDOCAL=`ps -ef | grep [m]ondoarchive | grep backup | wc -l`
+
+ if [ $MONDOCAL -ge 1 ]; then
+  echo "MONDOCAL="$MONDOCAL" mondo ugoitemasu"
+#mondarchive no process kill
+  MONDOPID=`ps -ef | grep [m]ondoarchive | grep backup | awk '{print $2}'`
+  kill -9 $MONDOPID  
+  echo "Load Average: "$LA" の為、mondoarchiveプロセス(PID:"$MONDOPID")をKILLしました。" > /home/sasaki/scripts/mailbody.txt
+  echo `hostname`"のイメージ取得を停止させました。" >> /home/sasaki/scripts/mailbody.txt
+  /home/sasaki/scripts/perl_mail2.pl
+
+ else
+  echo "MONDOCAL="$MONDOCAL" mondo ugoitemasen"
+
+fi 
+  
+
+else
+ echo "LA="$LA" nanimosimasenn"
+
+fi
